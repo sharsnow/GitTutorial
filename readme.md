@@ -101,8 +101,6 @@
 src/
 │
 ├─ components/
-│   ├─ layout/
-│   │   └─ ModeHeader.jsx         ← 頂部模式區域 (Tutorial / Challenge / Sandbox)
 │   │
 │   ├─ controls/
 │   │   ├─ BasicControls.jsx      ← commit / branch / checkout
