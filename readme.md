@@ -156,24 +156,59 @@ npm run build
 
 ## ☁️ 部署 (Deployment)
 
-本專案非常適合部署於 **Cloudflare Pages**：快速、免費、全球 CDN。
+本專案使用 GitHub Pages + npm run deploy（gh-pages 套件） 完成部署。 適合前端 SPA，部署快速，並能搭配自訂網域。
 
-### 部署步驟
+### 📦 安裝部署工具（僅需一次）
 
-1. 將專案推到 GitHub Repository
-2. 前往 Cloudflare Dashboard → Workers & Pages
-3. Create Application → Connect to Git
-4. 選擇你的 Repository
-5. 設定 Build：
+專案中使用 gh-pages 套件來一鍵部署：
 
-   * Framework preset: `Vite`
-   * Build command: `npm run build`
-   * Output directory: `dist`
-6. Save & Deploy
+```
+npm install gh-pages --save-dev
+```
 
-幾秒鐘後，你的 Git 視覺化教學工具就上線了！
+### ⚙️ Vite 設定（vite.config.js）
+
+如果你的 GitHub Pages 部署位置是：
+
+```
+https://username.github.io/<repo-name>/
+```
+
+那麼 Vite 必須設定 base：
+
+```
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+
+export default defineConfig({
+  plugins: [react()],
+  base: '/<你的 repo 名稱>/',   // ← 這裡一定要改成你的實際 repo
+})
+
+```
+
+代表你的 SPA 直接部署在根目錄，不需要子路徑。
+
+
+### 🚀 一鍵部署
+npm run deploy
+
+deploy 流程會：
+
+自動執行 npm run build
+
+將 dist/ 內容推到 gh-pages 分支
+
+GitHub Pages 自動更新
+
+🌐 完成！
+
+幾秒鐘後，你的 Git 視覺化教學工具就會透過 GitHub Pages 上線。 使用 gh-pages 套件可以避免手動切換分支、手動複製 dist 的麻煩
+
 ---
-🌐 線上展示 (Live Demo)
+
+## 🌐 線上展示 (Live Demo)
 
 你可以直接在瀏覽器體驗這款互動式 Git 教學工具（支援桌機 / 筆電）：
 
