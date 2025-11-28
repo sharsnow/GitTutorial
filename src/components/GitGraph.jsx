@@ -1,7 +1,7 @@
 // src/components/GitGraph.jsx
-import React from 'react';
+import React, { useMemo } from 'react'; // ✨ [修正] 這裡補上了 useMemo
 
-// 這些是畫圖用的常數（只在圖裡用，不放 App.jsx 裡讓它變胖）
+// 這些是畫圖用的常數
 const LANE_HEIGHT = 60;
 const NODE_RADIUS = 18;
 const X_SPACING = 80;
@@ -24,7 +24,7 @@ function getCurrentCommitId(repo) {
   return repo.branches[repo.head];
 }
 
-// 分支顏色（main 固定藍色，其它用 color index）
+// 分支顏色
 function getBranchColor(branchName, colorIndices) {
   if (branchName === 'main') return MAIN_COLOR;
   const index = colorIndices[branchName];
@@ -32,7 +32,38 @@ function getBranchColor(branchName, colorIndices) {
   return BRANCH_COLORS[index % BRANCH_COLORS.length];
 }
 
-export default function GitGraph({ repo }) {
+// [演算法] 計算哪些 Commit 是活著的 (可從 Branch/HEAD 到達)
+function getReachableCommits(repo) {
+  const reachable = new Set();
+  const queue = [];
+
+  // 1. 把所有 Branch 的頂端加入佇列
+  Object.values(repo.branches).forEach(commitId => queue.push(commitId));
+  
+  // 2. 把目前的 HEAD 加入佇列 (如果是 Detached HEAD)
+  if (repo.detachedHead) queue.push(repo.detachedHead);
+
+  // 3. 往回追朔
+  while (queue.length > 0) {
+    const id = queue.pop();
+    if (!id || reachable.has(id)) continue;
+
+    reachable.add(id);
+    
+    // 找到該 commit 物件，把它的 parent 也加入佇列
+    const commit = repo.commits.find(c => c.id === id);
+    if (commit) {
+      if (commit.parent) queue.push(commit.parent);
+      if (commit.parent2) queue.push(commit.parent2); // Merge parent
+    }
+  }
+  return reachable;
+}
+
+export default function GitGraph({ repo, onNodeClick }) {
+  // 使用 useMemo 優化效能，只在 commit 變更時重算可達性
+  const reachableSet = useMemo(() => getReachableCommits(repo), [repo.commits, repo.branches, repo.detachedHead]);
+
   const branchCount = Object.keys(repo.branchLanes || {}).length;
   const svgHeight = Math.max(300, (branchCount + 1) * LANE_HEIGHT);
   const svgWidth = Math.max(600, 200 + (repo.commits.length || 1) * X_SPACING);
@@ -65,10 +96,15 @@ export default function GitGraph({ repo }) {
         </marker>
       </defs>
 
-      {/* 連線（parent / merge / cherry-pick） */}
+      {/* 連線繪製 */}
       {repo.commits.map((commit) => {
         const end = getCoord(commit);
         const elements = [];
+        
+        // 判斷是否為幽靈節點，調整透明度
+        const isGhost = !reachableSet.has(commit.id);
+        const opacity = isGhost ? 0.2 : 1;
+        const lineStyle = { opacity, transition: 'opacity 0.5s ease-in-out' };
 
         // 一般 parent 線
         if (commit.parent) {
@@ -89,6 +125,7 @@ export default function GitGraph({ repo }) {
                 strokeWidth="2"
                 fill="none"
                 markerEnd="url(#arrowhead)"
+                style={lineStyle}
               />
             );
           }
@@ -108,6 +145,7 @@ export default function GitGraph({ repo }) {
                 strokeDasharray="5,3"
                 fill="none"
                 markerEnd="url(#arrowhead-merge)"
+                style={lineStyle}
               />
             );
           }
@@ -129,6 +167,7 @@ export default function GitGraph({ repo }) {
                 strokeDasharray="2,2"
                 fill="none"
                 markerEnd="url(#arrowhead-pick)"
+                style={lineStyle}
               />
             );
           }
@@ -137,24 +176,40 @@ export default function GitGraph({ repo }) {
         return elements;
       })}
 
-      {/* 節點 + 文字 + branch 標籤 */}
+      {/* 節點繪製 */}
       {repo.commits.map((commit) => {
         const { x, y } = getCoord(commit);
         const currentId = getCurrentCommitId(repo);
         const isHead = currentId === commit.id;
         const nodeColor = getBranchColor(commit.branch, repo.branchColorIndices || {});
 
+        // 幽靈節點樣式處理
+        const isGhost = !reachableSet.has(commit.id);
+        const nodeStyle = { 
+          opacity: isGhost ? 0.3 : 1, 
+          filter: isGhost ? 'grayscale(100%)' : 'none',
+          transition: 'all 0.5s ease-in-out'
+        };
+
         return (
-          <g key={commit.id}>
+          <g 
+            key={commit.id} 
+            onClick={() => onNodeClick && onNodeClick(commit.id)}
+            className="cursor-pointer group"
+            style={nodeStyle}
+          >
             <circle
               cx={x}
               cy={y}
               r={NODE_RADIUS}
               fill={nodeColor}
-              className="cursor-pointer hover:stroke-white transition-colors"
+              className="transition-all duration-200 group-hover:scale-110" 
               stroke="white"
               strokeWidth={isHead ? 4 : 2}
             />
+            {/* 隱形的大圓，增加點擊區域 */}
+            <circle cx={x} cy={y} r={NODE_RADIUS * 1.5} fill="transparent" />
+
             <text
               x={x}
               y={y + 5}
@@ -172,6 +227,7 @@ export default function GitGraph({ repo }) {
               textAnchor="middle"
               fill="#94a3b8"
               fontSize="10"
+              className="group-hover:fill-slate-200 transition-colors"
             >
               {commit.message}
             </text>
@@ -194,6 +250,7 @@ export default function GitGraph({ repo }) {
                     fill={badgeColor}
                     stroke="rgba(255,255,255,0.2)"
                     strokeWidth="1"
+                    className="group-hover:stroke-white transition-colors"
                   />
                   <text
                     x={x}
@@ -203,6 +260,7 @@ export default function GitGraph({ repo }) {
                     fontSize="11"
                     fontWeight="bold"
                     style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
+                    pointerEvents="none"
                   >
                     {bName}
                   </text>

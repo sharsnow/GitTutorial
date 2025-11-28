@@ -20,66 +20,53 @@
 * 透過教學腳本一步一步練習
 * 以挑戰模式實戰考驗
 * 用 Log Panel 看到模擬出的指令輸出
+* 真實編輯檔案並製造衝突
+* 透過視覺化介面解決 Merge Conflict
 
 ---
 
 ## ✨ 核心功能 (Features)
 
 ### 🔵 1. 視覺化 Git 歷史圖 (Git Graph)
-
-* 使用 React 畫出 commit nodes、branch 標籤、HEAD 標示。
+* 使用 SVG 繪製 Commit Nodes、Branch 標籤、HEAD 標示。
 * 支援橫向捲動、動態更新。
 * 每個 Git 動作都會即時更新圖形。
+* 幽靈節點 (Ghost Nodes)：當執行 git reset 後，被遺棄的 Commit 不會消失，而是變為半透明，模擬 Git 資料庫中的懸空物件 (Dangling Commits)。
 
-### 🟩 2. Git 基本操作按鈕 (Basic Git)
+### 📝 2. 真實檔案模擬 (Real-time File Simulation)
+
+* Mini Editor：內建微型程式碼編輯器，模擬 main.txt 的修改。
+* Staging 狀態：即時顯示工作目錄是 Clean 還是 Modified。
+* Diff 檢視器：在 Commit 前，可點擊「Diff」按鈕比對 HEAD 與 WorkDir 的差異，培養良好習慣。
+
+### ⚔️ 3. 衝突解決模擬器 (Conflict Resolver)
+
+* 3-Way Merge 演算法：真實計算 Base、Current、Incoming 三方差異。
+* 全螢幕解決介面：當衝突發生時，彈出視覺化比對視窗。
+* 互動式操作：可選擇「保留我的」、「保留對方的」或「手動編輯」，最後執行 Resolve & Commit。
+
+### ⏳ 4. 時光機與救援 (Time Machine)
+* 點擊檢視細節：點擊任意 Node 可查看該版本的檔案快照 (Snapshot)。
+* Reset to Here：針對「幽靈節點」提供救援功能，一鍵執行 git reset --hard <commit-id> 將分支指針救回，讓新手不再害怕操作錯誤。
+
+### 🟩 5. Git 基本操作
 
 * git commit
 * git branch
 * git checkout
 * 自動更新歷史樹與 Log 輸出。
 
-### 🟣 3. 分支合併 (Merge)
+### 🟣 6. 進階與危險操作
 
-* 下拉選取要 merge 的分支。
-* 立即顯示 Merge Commit 結果與連線變化。
+* Merge：支援 Fast-forward 與 Recursive Merge。
+* Rebase / Cherry-pick：視覺化「剪下貼上」與「複製貼上」的過程。
+* Reset / Revert：支援 --soft (保留 Staging) 與 --hard (強制覆蓋) 的差異模擬。
 
-### 🟡 4. 進階指令 (Advanced)
+### 📘 7. 互動式教學與挑戰
 
-* git rebase
-* git cherry-pick
-* 內建防呆機制：在教學模式下鎖定尚未解鎖的功能，避免新手混亂。
-
-### 🔴 5. 危險操作區 (Danger Zone)
-
-* git reset --soft（保留檔案在暫存區）
-* git reset --hard（完全捨棄修改）
-* git revert HEAD
-
-透過明顯色彩標示「危險區」，教導新手何時該小心使用。
-
-### 📘 6. 互動式教學模式 (Tutorial Mode)
-
-* 內建完整教學腳本（11 步）。
-* 從 Commit、Branch 到 Rebase、Reset 一步步引導。
-* 每步含：標題、教學文字、操作提示。
-* 當達成條件後系統會自動解鎖下一步。
-
-### 🏆 7. 挑戰模式 (Challenge Mode)
-
-* 提供特定謎題（例如：請將 HEAD 移回 c3）。
-* 使用者需用正確 Git 操作達成目標才算過關。
-
-### 🧪 8. 沙盒模式 (Sandbox Mode)
-
-* 全部指令皆可使用。
-* 適合自由測試 Git 行為或課堂示範。
-
-### 🧩 9. Log 模擬與暫存區 (Command History & Staging)
-
-* 模擬 Terminal 的指令輸出。
-* 顯示 Staging Area（暫存區）狀態變化。
-* 理解 GUI 與 CLI 指令的對應關係。
-
+* 教學模式：循序漸進解鎖功能（例如：第 5 關才解鎖編輯器）。
+* 挑戰模式：解謎闖關，考驗對 Git 指令的理解。
+* 沙盒模式：全功能開放，自由實驗。
 ---
 
 ## 🏗 技術架構 (Tech Stack)
@@ -103,29 +90,30 @@ src/
 ├─ components/
 │   │
 │   ├─ controls/
-│   │   ├─ BasicControls.jsx      ← commit / branch / checkout
-│   │   ├─ MergeControls.jsx      ← merge 操作
-│   │   ├─ AdvancedControls.jsx   ← rebase / cherry-pick
-│   │   ├─ DangerControls.jsx     ← reset / revert
-│   │   └─ ControlsPanel.jsx      ← 整合所有控制面板
+│   │   ├─ ControlsPanel.jsx       ← 整合所有控制按鈕
+│   │   └─ ConflictResolver.jsx    ← 衝突解決全螢幕介面
+│   │
+│   ├─ editor/
+│   │   └─ MiniEditor.jsx          ← 檔案編輯器 (含 Diff 按鈕)
 │   │
 │   ├─ logs/
-│   │   └─ LogsPanel.jsx          ← Command History / Staging Area / Repo Info
-│   │     
-│   └─ GitGraph.jsx               ← Commit Graph 視覺化核心
-│   
-│       
+│   │   └─ LogsPanel.jsx           ← 指令紀錄與狀態顯示
+│   │
+│   ├─ modals/
+│   │   ├─ CommitDetailModal.jsx   ← 節點細節與 Reset 救援
+│   │   └─ DiffModal.jsx           ← 差異比對視窗
+│   │
+│   └─ GitGraph.jsx                ← Commit Graph 視覺化 (含幽靈節點邏輯)
 │
 ├─ core/
-│   ├─ gitActions.js              ← Git 演算法邏輯
-│   └─ gitInitialState.js         ← 初始 Git 狀態定義
+│   ├─ gitActions.js               ← 核心邏輯 (新增 detectConflict, resetBranchToCommit)
+│   └─ gitInitialState.js          ← 初始狀態定義
 │
 ├─ data/
-│   ├─ tutorialSteps.js           ← 教學腳本設定檔
-│   └─ challengeLevels.js         ← 挑戰關卡資料
+│   ├─ tutorialSteps.js            ← 教學腳本
+│   └─ challengeLevels.js          ← 挑戰關卡
 │
-├─ App.jsx                        ← 主程式入口（狀態管理中心）
-└─ App.css                        ← 全域樣式（滾動條客製化等）
+└─ App.jsx                         ← 主程式入口 (整合 Modal 與 Mode 切換)
 ```
 
 ---
@@ -218,9 +206,7 @@ GitHub Pages 自動更新
 
 ## 🔮 未來展望 (Roadmap)
 
-* 📦 **完整 git add 流程**：支援 `git add .` 與 `git add <file>`
 * 🌐 **遠端協作模擬**：origin/main、git push、git pull、git fetch
-* ⚔️ **衝突解決模擬器 (Merge Conflicts)**：視覺化 Accept Current / Incoming
 * 👥 **多人協作模式**（可模擬 pair programming 情境）
 * 💾 **Git 狀態匯出 / 匯入**（儲存你的 Git Graph 進度）
 
